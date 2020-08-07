@@ -1,0 +1,670 @@
+---
+title: 'Linguistic productivity analysis in R: a tutorial'
+author: "Niek Van Wettere (https://orcid.org/0000-0002-9455-368X)"
+output: html_notebook
+  
+---
+
+<br>
+
+
+# Introduction
+<br>
+This tutorial provides an overview of different plotting techniques and statistical methods that can be used to perform a productivity analysis of linguistic constructions. First, it is shown how a dataset comprised of individual attestations (= rows) and variables (= columns) can give rise to different types of plots and ananlyses. In part 2, a dataset containing productivity measurements (= columns) per construction (= rows) is used as a starting point for further statistical analysis.
+<br><br>
+
+# Part 1: Analysis of dataset [individual attestations X variables]
+<br>
+The first step is to import a csv file with the toy dataset. The data that we are going to use here, contain four variables:
+
+1. ID: an identification number for each example
+2. CONSTRUCTION: there are four different constructions, namely cx_1, cx_2, cx_3 and cx_4
+3. TYPE: this variable specifies the different types (type_1, type_2 etc.) that occupy a particular slot in the construction
+4. CAT: different categories to which the types can belong. These categories could be morphosyntactic, semantic etc.
+
+```{r}
+data<-read.table(file="toy_dataset.csv", header=TRUE, sep=";", comment.char="", fill=TRUE, quote="", row.names=NULL, stringsAsFactors=FALSE, strip.white=TRUE, encoding = "utf-8", blank.lines.skip = TRUE)
+head(data)
+```
+<br>
+
+Note that the first row of the csv file is read as a header and that the strings (e.g. type_1, type_2 etc.) are read as character strings, and not as factors.
+
+<br><br>
+
+
+## 1. Load R packages
+<br>
+In this first step, we will use three packages: 
+
+* dplyr: this package facilitates certain data wrangling operations
+* ggplot2: this package is very useful to create plots
+* zipfR: a package that can assist you in conducting productivity research
+
+```{r}
+.libPaths("C:/R/library") # this line of code tells R where packages are saved on your pc: you might have to adjust this
+library('dplyr')
+library("ggplot2")
+library('zipfR')
+```
+<br><br>
+
+
+
+## 2. Type-Frequency List (Zipf ranking)
+<br>
+We transform the data such that we obtain the frequency of each type per construction, as exemplified by the dataframe below.
+
+```{r}
+tokens<-select(data, TYPE, CONSTRUCTION) # the relevant variables are selected
+type_dataframe<-as.data.frame(table(tokens))
+type_dataframe<-filter(type_dataframe, Freq!=0) # zero frequencies are filtered out of the dataframe
+cx<-as.character(unique(type_dataframe[,"CONSTRUCTION"]))
+(head(type_dataframe))
+```
+
+<br>
+In the code below, a tfl object is created for each construction, which can be used to visualize a "Type-Frequency List" with the zipfR package.
+
+```{r}
+list_dataframes<-list() # first, we have to set up an empty list  
+for (i in 1:length(cx)) { # loop
+  a<-filter(type_dataframe, CONSTRUCTION == cx[i]) # per construction 
+  f<-a[,"Freq"]
+  type_freq<-tfl(f, k=1:length(f))  # f = vector with frequency of each type & k = integer vector of type IDs
+  list_dataframes[[i]]<-type_freq} # each construction and its frequency distribution is a different component of the list
+
+head(list_dataframes[[3]])
+```
+
+<br>
+The Type-Frequenc List ranks the different types according to decreasing frequency. Note that the symbol "N" stands for the number of tokens in the sample of the construction and "V" indicates the number of different types in the sample of that particular construction. Now that we have all the information, we can plot the Type-Frequency List.
+
+```{r}
+type_freq<-plot(list_dataframes[[1]], list_dataframes[[2]], list_dataframes[[3]], list_dataframes[[4]], bw=TRUE, col=c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3") , legend=cx, xlim=c(0,50), ylim=c(0,120), type="b")
+```
+
+<br>
+Note that you can also use the information in the tfl object to create your own custom-made plot. In the plot below, types of similar frequency are clustered together with the same colour. The horizontal dashed line line corresponds to the mean frequency of the 10 most frequent types.
+
+
+```{r}
+frequency<-sort(list_dataframes[[3]]$f, decreasing = TRUE) # sort frequencies of the types
+dist_freq<-dist(frequency, method = "euclidean") # calculate Euclidean distance
+clust_dist_freq <- hclust(dist_freq, method = "ward.D2") # hierarchical clustering of the types based on the distances between the frequencies
+clusters<-cutree(clust_dist_freq, h=5) # cut the tree at a certain height h to determine a certain number of clusters
+
+type_freq_2<-data.frame(seq(1,103), as.integer(frequency), as.factor(clusters)) # dataframe with information to be plotted
+colnames(type_freq_2)<-c("rank", "frequency", "cluster") # change column names of the dataframe
+
+mean_top_10 <- mean(frequency[1:10]) # calculate the mean of the top 10 frequencies
+
+ggplot(data=type_freq_2, aes(x=rank, y=frequency, group=cluster)) + geom_point(aes(color = cluster), size = 3) + scale_color_manual(values=c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#add8e6", "#a65628", "#000000")) + theme_classic() + guides(color = FALSE) + ggtitle("Type-Frequency List (Zipf ranking)") + theme(plot.title = element_text(hjust = 0.5)) + geom_hline(yintercept=mean_top_10, linetype = "dashed") + annotate(geom = "text", 90,mean_top_10+3,label = "mean of freq top 10 types") # points are colored according to cluster
+
+```
+
+
+
+
+
+<br><br>
+
+
+## 3. Frequency spectrum plot
+<br>
+
+Next, we create a Frequency spectrum plot based on the information of the tfl object.
+
+```{r}
+list_dataframes_spec<-list()
+for (i in 1:length(cx)) {                     
+  freq_spec<-tfl2spc(list_dataframes[[i]]) # the function tfl2spc from the ZipfR package
+  list_dataframes_spec[[i]]<-freq_spec}
+```
+
+<br>
+The Frequency spectrum plot below shows the frequency for V1 (hapax legomena), V2 (dis legomena) etc., per construction.
+
+
+```{r}
+freq_spec<-plot(list_dataframes_spec[[1]], list_dataframes_spec[[2]], list_dataframes_spec[[3]], list_dataframes_spec[[4]], bw=TRUE, barcol=c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3"), legend=cx, m.max=5)
+```
+
+<br><br>
+
+## 4. Empirical vocabulary growth curve
+<br>
+
+In this section, we construct an empirical vocabulary growth curve. The first chunk establishes the type frequency for each count of tokens within the window of the sample size.
+
+```{r}
+list_empirical_vgc<-list()
+c<-vector()
+for (i in 1:length(cx)) { 
+  a<-filter(tokens, CONSTRUCTION == cx[i]) # per construction
+  
+  for (j in 1:length(a[,1])) {  # loop within a loop
+    b<-a$TYPE[1:j]
+    c<-append(c, length(unique(b))) # the number of types after j tokens (max of j = sample size for that construction) is determined
+  } 
+  
+  d<-c(1:length(a[,1]))
+  e<-vgc(N=d, V = c) # vocabulary growth curve function from the ZipfR package
+  
+  #N = integer vector of sample sizes N for which vocabulary growth data is available
+  #V = vector of corresponding type frequencies
+  
+  list_empirical_vgc[[i]]<-e
+  c<-vector()
+}
+```
+<br>
+
+The next code chunk does the same for the hapax frequency.
+
+```{r}
+list_empirical_vgc_V1<-list()   
+z<-vector()
+for (i in 1:length(cx)) { 
+  a<-filter(tokens, CONSTRUCTION == cx[i]) # per construction
+  
+  for (j in 1:length(a[,1])) {
+    b1<-a$TYPE[1:j]
+    b2<-as.data.frame(table(b1))
+    b3<-filter(b2, Freq==1)  # only types that occur once are taken into account
+    b4<-nrow(b3) # the number of hapaxes is counted
+    z<-append(z, b4)
+  } 
+  
+  d<-c(1:length(a[,1]))
+  e<-vgc(N=d, V = list_empirical_vgc[[i]]$V, Vm=data.frame(z))
+  
+  # the information about the type frequencies (V) is extracted from "list_empirical_vgc" established in the chunk above
+  # Vm adds the hapax frequencies
+  
+  list_empirical_vgc_V1[[i]]<-e
+  z<-vector()
+}
+```
+
+<br>
+Finally, we draw the empirical vocabulary growth curve for cx_1 and cx_4. The thinner lines correspond to the evolution of the hapax frequency.
+
+
+```{r}
+empirical_vgc_with_V1<-plot(list_empirical_vgc_V1[[1]], list_empirical_vgc_V1[[4]], col=c("#e41a1c", "#377eb8"), legend=cx[c(1,4)], xlim=c(0,400), main = "Empirical Vocabulary Growth V1", add.m=1) # "add.m=1" adds the hapax frequencies
+```
+
+<br><br>
+
+## 5. Hapax type ratio
+<br>
+The hapax type ratio is a different productivity measure, in addition to type frequency and hapax frequency. Just like we have established the evolution of the type frequency and the hapax frequency throughout the sample, we can do the same thing for the hapax type ratio, using the ggplot2 package.
+
+
+```{r}
+hapax_type_ratio_evolution <- list_empirical_vgc_V1[[2]]$V1 / list_empirical_vgc_V1[[2]]$V
+hapax_token_evolution <- list_empirical_vgc_V1[[2]]$V1 / list_empirical_vgc_V1[[2]]$N
+type_token_evolution <- list_empirical_vgc_V1[[2]]$V / list_empirical_vgc_V1[[2]]$N
+
+N<-rep(c(1:400), 3)   # create a dataframe with three ratio measures
+ratio_measures<-rep(c("hapax_type_ratio", "hapax_token_ratio", "type_token_ratio"), each= 400)
+ratio_overview<- c(hapax_type_ratio_evolution, hapax_token_evolution, type_token_evolution)
+ratio_data_frame<-data.frame(N, ratio_measures, ratio_overview)
+head(ratio_data_frame)
+
+ggplot(data = ratio_data_frame, aes(x=N, y= ratio_overview)) + geom_point(shape=1, aes(colour=ratio_measures)) + theme_minimal() + xlab("sample size") + ylab("ratio values") +  scale_color_manual(name="Ratios", labels=c("hapax token ratio","hapax type ratio","type token ratio"),           values=c("#e41a1c", "#377eb8", "#4daf4a"))
+```
+
+<br>
+The plot below displays the same information, but adds a smoother (cf. method = "loess"). The dashed horizontal line indicates the minimum value of the HTR.
+
+```{r}
+
+ggplot(data = ratio_data_frame, aes(x=N, y= ratio_overview)) + geom_smooth(size = 1.5, method = "loess", se = FALSE, aes(colour=ratio_measures)) + theme_minimal() + xlab("sample size") + ylab("ratio values") +  scale_color_manual(name="Ratios", labels=c("hapax token ratio","hapax type ratio","type token ratio"),  values=c("#e41a1c", "#377eb8", "#4daf4a")) + geom_hline(yintercept=min(hapax_type_ratio_evolution), linetype = "dashed")
+
+```
+
+
+
+<br><br>
+
+
+## 6. Summary of all productivity measures
+<br>
+
+This section demonstrates how to generate a dataframe with different productivity measures per construction.
+
+```{r}
+summary_dataframe<-data.frame()
+for (i in 1:length(cx)) { 
+  summary_dataframe[i,1]<-cx[i]
+  summary_dataframe[i,2]<-N(list_dataframes[[i]])  # tokens
+  summary_dataframe[i,3]<-V(list_dataframes[[i]]) # types
+  summary_dataframe[i,4]<-Vm(list_dataframes[[i]],1)  # hapax
+  summary_dataframe[i,5]<-Vm(list_dataframes[[i]],2)  # dis legomena
+  summary_dataframe[i,6]<-summary_dataframe[i,3] / summary_dataframe[i,2]  # type_token_ratio
+  summary_dataframe[i,7]<-summary_dataframe[i,4] / summary_dataframe[i,2]  # hapax_token_ratio
+  summary_dataframe[i,8]<-summary_dataframe[i,4] / summary_dataframe[i,3]  # hapax_type_ratio
+  summary_dataframe[i,9]<-summary_dataframe[i,5] / summary_dataframe[i,3]  # dis_type_ratio
+  summary_dataframe[i,10]<-attr(list_dataframes[[i]], "f.max") # token_freq of type with highest token_freq
+}
+
+colnames(summary_dataframe)<-c("CONSTRUCTION", "token_freq_sample", "type_freq", "hapax_freq", "dis_legomena_freq", "type_token_ratio", "hapax_token_ratio", "hapax_type_ratio", "dis_type_ratio", "highest_token_freq_within_types")
+
+summary_dataframe
+```
+
+<br><br>
+
+## 7. Productivity measures within categories
+<br>
+
+It can be interesting to evaluate productivity measurements per category (morpho-syntactic, semantic etc.). First, we calculate this in the code chunk below.
+
+
+```{r}
+# token freq per CAT 
+first_selection<-select(data, CONSTRUCTION, CAT)
+dataframe_per_cat<-as.data.frame(table(first_selection))
+dataframe_per_cat$CX_CAT <- paste(dataframe_per_cat$CONSTRUCTION, dataframe_per_cat$CAT, sep = "+") # add variable CONSTRUCTION_CAT
+dataframe_per_cat <-dataframe_per_cat[,c(-1:-2)]
+dataframe_per_cat<-filter(dataframe_per_cat, Freq!=0)
+colnames(dataframe_per_cat)<-c("token_freq","CONSTRUCTION_CAT")
+
+# freq freq per CAT 
+second_selection<-select(data, CONSTRUCTION, CAT, TYPE)
+dataframe_per_cat_2<-as.data.frame(table(second_selection))
+dataframe_per_cat_2$CX_CAT <- paste(dataframe_per_cat_2$CONSTRUCTION, dataframe_per_cat_2$CAT, sep = "+") # add variable CONSTRUCTION_CAT
+dataframe_per_cat_2 <-dataframe_per_cat_2[,c(-1:-2)]
+dataframe_per_cat_2<-filter(dataframe_per_cat_2, Freq!=0)
+
+type_count<-as.data.frame(table(dataframe_per_cat_2$CX_CAT))
+type_count$Var1<-as.character(type_count$Var1)
+colnames(type_count)<-c("CONSTRUCTION_CAT", "type_freq")
+
+# hapax freq per CAT
+dataframe_per_cat_3<-filter(dataframe_per_cat_2, Freq==1)
+hapax_count<-as.data.frame(table(dataframe_per_cat_3$CX_CAT))
+colnames(hapax_count)<-c("CONSTRUCTION_CAT", "hapax_freq")
+
+# add a zero hapax count for those combinations CONSTRUCTION-CAT that have no hapaxes, only types with freq > 1
+if(length(hapax_count$hapax_freq) != length(type_count$type_freq)) {   
+  missing_values<-setdiff(type_count$CONSTRUCTION_CAT, hapax_count$CONSTRUCTION_CAT)
+  extra <-data.frame(missing_values, rep(0,length(missing_values)))
+  colnames(extra)<-c("CONSTRUCTION_CAT","hapax_freq")
+  hapax_count <- rbind(hapax_count, extra)}
+
+# merge different dataframes
+overview_data<-merge(dataframe_per_cat, type_count, by ="CONSTRUCTION_CAT", all=TRUE)
+overview_data<-merge(overview_data, hapax_count, by="CONSTRUCTION_CAT", all=TRUE)
+overview_data$CONSTRUCTION<-unlist(lapply(strsplit(overview_data$CONSTRUCTION_CAT, "+", fixed=T), function (x) {x[1]})) # add again the variable CONSTRUCTION on the basis of CONSTRUCTION_CAT
+
+head(overview_data)
+```
+<br>
+This information can now be visualized in the graph below. The x-axis corresponds to the within-category type frequency, whereas the y-axis corresponds to the within-category hapax frequency. The size of the dots represent the within-category token frequency. 
+
+```{r}
+ggplot(data = overview_data, aes(x=type_freq, y= hapax_freq, group = CONSTRUCTION)) + labs(x = "type frequency", y = "hapax frequency", title = "Productivity measures within categories", size = "token frequency") + geom_point(aes(size = token_freq, color = CONSTRUCTION), position = "jitter", alpha = 1/2) + theme_minimal() +  scale_color_manual(name="construction", labels=c("cx 1","cx 2","cx 3", "cx 4"),  values=c("#e41a1c", "#377eb8", "#4daf4a", "#984ea3")) # for geom_point, both "size" and "color" are within the scope of "aes" (aesthetic mappings)
+
+```
+
+<br><br>
+
+
+## 8. LNRE-models
+<br>
+Finally, we can construct a LNRE model to make predictions beyond the attested sample size.
+
+```{r}
+lnre_1<-lnre("fzm", list_dataframes_spec[[3]], exact=TRUE) # fzm = finite Zipf-Mandelbrot
+summary(lnre_1)
+vgc_lnre <- lnre.vgc(lnre_1, (1:1000), variances = TRUE) # lnre.vgc computes expected vocabulary growth curves according to a LNRE model
+fzm.spc <- lnre.spc(lnre_1, N(lnre_1)) # lnre.spc computes the expected frequency spectrum of a LNRE model at specified sample size N
+```
+
+<br>
+The aspects coloured in red in the two plots below correspond to what the model predicts.
+
+
+```{r}
+plot(list_dataframes_spec[[3]], fzm.spc, legend=c("observed", "fZM"), main = "Frequency Spectrum")
+plot(list_empirical_vgc[[3]], vgc_lnre, N0=N(lnre), legend=c("observed", "fZM"), xlim= c(0,1000), main = "Vocabulary Growth")
+```
+
+<br>
+
+As illustrated by the plots below, the predicted vocabulary growth becomes slightly different if we use only the first 300 tokens of the original sample consisting of 400 tokens to base the predictions on. 
+
+```{r}
+data_2<-select(data, TYPE, CONSTRUCTION)
+reduced<-filter(data_2, CONSTRUCTION == "cx_3")
+reduced<-reduced[1:300,]
+reduced_2<-as.data.frame(table(reduced))
+reduced_2<-filter(reduced_2, Freq!=0)
+
+reduced_3<-reduced_2[,"Freq"]
+reduced_4<-tfl(reduced_3, k=1:length(reduced_3))
+reduced_5<-tfl2spc(reduced_4)
+
+c<-vector()
+for (j in 1:length(reduced[,1])) {
+    b<-reduced$TYPE[1:j]
+    c<-append(c, length(unique(b)))} 
+  
+d<-c(1:length(reduced[,1]))
+reduced_6<-vgc(N=d, V = c)
+
+lnre_2<-lnre("fzm", reduced_5, exact=TRUE) 
+vgc_lnre_2 <- lnre.vgc(lnre_2, (1:1000), variances = TRUE)
+
+plot(vgc_lnre, vgc_lnre_2, legend=c("fZM_400", "fZM_300"), xlim= c(0,1000), main = "Vocabulary Growth")
+```
+<br>
+For this reason, we have to be careful about prediction accuracy far beyond the attested sample size.
+
+
+<br><br><br><br>
+
+
+# Part 2: Analysis of dataset with productivity measures
+<br>
+This second part aims to analyze a somewhat larger set of constructions, accompanied by a series of productivity measurements.
+
+```{r}
+(data_bis<-read.table(file="toy_dataset_productivity_measures.csv", header=TRUE, sep=";", comment.char="", fill=TRUE, na.strings = "character", quote="", row.names=NULL, stringsAsFactors=FALSE, strip.white=TRUE, encoding = "utf-8", blank.lines.skip = TRUE))
+```
+<br>
+In addition to more traditional productivity measures, a series of measurements that aim to describe the summit of the frequency distribution are also added. For example:
+
+* avg_summit_10: the average frequency of the first ten ranks
+* diff_r1_r2: the frequency difference between the first and the second rank of the distribution
+
+<br><br>
+
+## 1. Load R packages
+<br>
+We load some R packages:
+
+```{r}
+.libPaths("C:/R/library")
+library('FactoMineR')
+library('factoextra')
+library("corrplot")
+library("PerformanceAnalytics")
+library("MASS")
+library("effects")
+library("vcd")
+library("car")
+library("performance")
+library("DHARMa")
+library("partykit")
+library("rpart")
+library("rpart.plot")
+```
+
+
+
+<br><br>
+
+## 2. Correlations between productivity measurements
+<br>
+Before we tackle the PCA, let's take a look at the correlations between the productivity measurements:
+
+```{r}
+correlations<-round(cor(data_bis[,-1:-3]),2)
+corrplot(correlations, type="upper", order="hclust", tl.col="black", tl.srt=45)
+```
+
+```{r}
+chart.Correlation(data_bis[,-1:-3], histogram=F, pch=19)
+```
+
+
+<br><br>
+
+## 3. PCA
+<br>
+Principal Component Analysis (henceforth PCA) is a dimension reduction technique that can be applied by means of the R package FactoMineR. Note that, by default, the variables are standardized (cf. scale.unit = TRUE), prior to the transformation of the variables into principal components.
+
+```{r}
+data_prod<-data_bis
+row.names(data_prod)<-data_prod[,1]
+data_prod<-data_prod[,c(-1:-3)]
+PCA_prod<-PCA(data_prod, graph = FALSE, scale.unit = TRUE)
+summary(PCA_prod)
+```
+<br>
+As illustrated by the following scree plot, the first two dimensions capture most of the original variance in the data.
+
+```{r}
+screeplot<-barplot(PCA_prod$eig[,2], names = 1:nrow(PCA_prod$eig), xlab = "components", ylab = "Percentage of explained variance")
+```
+<br>
+
+The fact that the first two dimensions capture more variability is also illustrated by the PCA coordinates of the variables. The coordinates of the first dimensions have a broader IQR than the following dimensions:
+
+```{r}
+var <- get_pca_var(PCA_prod)
+boxplot(var$coord)
+```
+<br>
+The PCA enables you to inspect the most important dimensions of variability from two different perspectives, namely the "variables" (i.e. the productivity measures) and the "individuals" (i.e. the constructions). In the graph below, the productivity measures are represented with arrows in the "correlation circle".
+
+* If the arrows point in the same direction, the variables are positively correlated.
+* If the arrows point in opposite directions, the variables are negatively correlated.
+* If the arrows are orthogonal, the variables are independent.
+
+Variables of which the arrow does not touch the correlation circle are of less representational quality. The coordinates measured at the end of each arrow in the two-dimensional plane correspond to the correlation of that variable with the dimension coinciding with the x-axis and the dimension coinciding with the y-axis, respectively. 
+
+```{r}
+(variables_map<-plot(PCA_prod, choix = "var", cex = 0.6))
+```
+<br>
+The dimdesc function is very useful to establish the correlation of each variable with each PCA dimension, accompanied by a p-value.
+
+```{r}
+dimdesc(PCA_prod)
+```
+<br>
+<br>
+Next to the graph of the variables, we can also construct a graph of individuals, in which the constructions are positioned with respect to the two most important PCA dimensions:
+
+
+
+```{r}
+plot(PCA_prod, cex = 0.8, col.ind = "black", choix = c("ind"))
+```
+<br>
+The plot can be further enhanced by colouring the constructions according to the variable TYPE_CX. The barycentres of the two types of constructions are also added to the plot and confidence ellipses are drawn around the barycentres.
+
+```{r}
+data_prod_2<-data_bis
+row.names(data_prod_2)<-data_prod_2[,1]
+data_prod_2<-data_prod_2[,c(-1,-3)]
+PCA_prod_2<-PCA(data_prod_2, graph = FALSE, scale.unit = TRUE, quali.sup = 1)
+plotellipses(PCA_prod_2, cex = 0.8, col.ind = "black", choix = c("ind"), habillage = 1)
+```
+<br>
+It is also possible to cluster the individuals within the two-dimensional PCA space:
+
+```{r}
+data_prod_3<-data_bis
+row.names(data_prod_3)<-data_prod_3[,1]
+data_prod_3<-data_prod_3[,c(-1:-3)]
+PCA_prod_3<-PCA(data_prod_3, graph = FALSE, scale.unit = T, ncp = 2)
+res.hcpc <- HCPC(PCA_prod_3, nb.clust = -1, graph = FALSE, method = "ward", metric = "euclidean") # min = 2, max = 10
+plot(res.hcpc)
+plot(res.hcpc, choice ="map")
+```
+<br>
+Finally, we can try to combine the "variable view" and the "individual view" into one unified biplot:
+
+
+```{r}
+fviz_pca_biplot(PCA_prod)
+```
+
+
+
+<br><br>
+
+## 2. Regression tree
+
+<br>
+Another potentially interesting way to gain insight into the data is to construct a tree regression model. The following tree demonstrates that the difference between the first and second rank (cf. diff_r1_r2) only makes a difference in predicting the hapax frequency for constructions with a large value for avg_summit_10.
+
+```{r}
+tree_model_1<-rpart(hapax_freq ~ avg_summit_10 + diff_r1_r2, data = data_bis, method = "poisson", control = rpart.control(minsplit = 4))
+printcp(tree_model_1)
+prp(tree_model_1, varlen = 7)
+plot(as.party(tree_model_1))
+```
+<br>
+Contrary to the previous tree, this new model only recognizes the variable avg_summit_10 to split the data. 
+
+```{r}
+tree_model_2<-glmtree(hapax_freq ~ avg_summit_10 * diff_r1_r2, data = data_bis, epsilon =1, offset = token_freq_sample, alpha = 0.2, minsize = 1, family = "poisson")
+plot(tree_model_2)
+```
+
+
+<br><br>
+
+## 3. Regression for count data: negative binomial
+<br>
+In this last part, we attempt to establish a negative binomial regression model, suited for count data. As outcome variable, the productivity measurement hapax frequency is chosen. The explanatory variables are avg_summit_10 and diff_r1_r2. Of course, this model is only based on a limited number of constructions: ideally, we would have more data points to base the estimation on.
+
+```{r}
+mean(data_bis$hapax_freq)
+var(data_bis$hapax_freq)
+```
+<br>
+Clearly, the variance of the variable "hapax frequency" far exceeds the mean, which makes a poisson model less appropriate.
+
+<br><br>
+
+### 3.1 Model summary
+<br>
+Let's now construct the model:
+
+```{r}
+nbGLM <- glm.nb(hapax_freq ~ avg_summit_10 + diff_r1_r2 + offset(log(token_freq_sample)), data=data_bis)
+summary(nbGLM)
+```
+`<br>
+
+Comparison with models:
+
+```{r}
+nbGLM.null <- glm.nb(hapax_freq ~ 1 + offset(log(token_freq_sample)), data=data_bis)
+nbGLM.2 <- glm.nb(hapax_freq ~ avg_summit_10 + offset(log(token_freq_sample)), data=data_bis)
+nbGLM.4 <- glm.nb(hapax_freq ~ avg_summit_10 * diff_r1_r2 + offset(log(token_freq_sample)), data=data_bis)
+anova(nbGLM.null, nbGLM.2, nbGLM, nbGLM.4, test="Chisq")
+```
+`<br>
+The rootogram below indicates to what extent the expected counts correspond to the observed counts:
+
+
+
+```{r}
+fitted_hapax_freq<-fitted(nbGLM)
+observed_hapax_freq<-data_bis$hapax_freq
+
+rootogram(observed_hapax_freq, fitted_hapax_freq)
+```
+
+
+<br><br>
+
+
+### 3.2 Effect plots
+<br>
+In order to interpret the model, we draw an effect plot. The first plot seems to give us unrealistic predictions for the lower values of avg_summit_10:
+
+```{r}
+plot(Effect(focal.predictors = c("avg_summit_10", "diff_r1_r2"), mod = nbGLM, x.var = "avg_summit_10", xlevels=list(avg_summit_10=c(0:30), diff_r1_r2=c(5,30,50))),  type="response", lines=list(multiline=TRUE, col=c("blue", "black", "green")), confint=list(style="bars"),  ylab="Predicted hapax frequency", grid=TRUE)
+```
+<br>
+However, when we focus on the larger values of avg_summit_10, it becomes again apparent that higher values of diff_r1_r2 should lead to a higher hapax frequency, as we already observed in section 2 above. It must be stressed that this claim is based on a relatively limited dataset.
+
+
+```{r}
+plot(Effect(focal.predictors = c("avg_summit_10", "diff_r1_r2"), mod = nbGLM, x.var = "avg_summit_10", xlevels=list(avg_summit_10=c(15:30), diff_r1_r2=c(5,30,50))),  type="response", lines=list(multiline=TRUE, col=c("blue", "black", "green")), confint=list(style="bars"),  ylab="Predicted hapax frequency", grid=TRUE)
+```
+<br>
+The plot above can also be visualized as follows (but the message remains the same):
+
+
+```{r}
+plot(Effect(focal.predictors = c("avg_summit_10", "diff_r1_r2"), mod = nbGLM, x.var = "diff_r1_r2", xlevels=list(avg_summit_10=c(20,30), diff_r1_r2=c(1:60))),  type="response", lines=list(multiline=TRUE, col=c("blue", "black")), confint=list(style="bars"),  ylab="Predicted hapax frequency", grid=TRUE)
+```
+
+
+<br><br>
+
+### 3.3 Model diagnostics
+<br>
+In this last section, we evaluate the model by means of some model diagnostics. First, we inspect the residuals:
+
+```{r}
+plot(rstandard(nbGLM, type="pearson") ~ fitted(nbGLM), xlab = "fitted values", ylab="Standardized Pearson Residuals")
+abline(h=0)
+```
+<br>
+
+
+
+```{r}
+testDispersion(nbGLM)
+simulationOutput<-simulateResiduals(fittedModel = nbGLM, plot = F)
+plot(simulationOutput, quantreg = F)
+```
+<br>
+We also check for influential data points:
+
+
+```{r}
+influencePlot(nbGLM)
+```
+<br>
+The following code checks for multi-collinearity, heteroscedasticity and autocorrelation:
+
+
+```{r}
+check_collinearity(nbGLM)
+check_heteroscedasticity(nbGLM)
+check_autocorrelation(nbGLM)
+```
+
+
+<br><br>
+
+# 4. References
+
+<br>
+
+```{r}
+citation('dplyr')
+citation('zipfR')
+citation("ggplot2")
+citation('FactoMineR')
+citation('factoextra')
+citation("corrplot")
+citation("PerformanceAnalytics")
+citation("MASS")
+citation("effects")
+citation("vcd")
+citation("car")
+citation("performance")
+citation("DHARMa")
+citation("partykit")
+citation("rpart")
+citation("rpart.plot")
+```
+
+```{r}
+sessionInfo()
+```
+
