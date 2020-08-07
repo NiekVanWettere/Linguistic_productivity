@@ -337,7 +337,7 @@ The aspects coloured in red in the two plots below correspond to what the model 
 
 ```{r}
 plot(list_dataframes_spec[[3]], fzm.spc, legend=c("observed", "fZM"), main = "Frequency Spectrum")
-plot(list_empirical_vgc[[3]], vgc_lnre, N0=N(lnre), legend=c("observed", "fZM"), xlim= c(0,1000), main = "Vocabulary Growth")
+plot(list_empirical_vgc[[3]], vgc_lnre, N0=N(lnre_1), legend=c("observed", "fZM"), xlim= c(0,1000), main = "Vocabulary Growth")
 ```
 
 <br>
