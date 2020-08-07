@@ -8,7 +8,8 @@ knit: (function(input_file, encoding) {
  output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
 
 author: "Niek Van Wettere (https://orcid.org/0000-0002-9455-368X)"
-output: html_notebook
+output: 
+        html_notebook
   
 ---
 
