@@ -1,5 +1,12 @@
 ---
 title: 'Linguistic productivity analysis in R: a tutorial'
+
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
+
 author: "Niek Van Wettere (https://orcid.org/0000-0002-9455-368X)"
 output: html_notebook
   
