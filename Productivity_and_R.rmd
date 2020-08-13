@@ -45,11 +45,9 @@ In this first step, we will use three packages:
 * ggplot2: this package is very useful to create plots
 * zipfR: a package that can assist you in conducting productivity research
 
-```{r, include = FALSE}
+```{r, results = "hide"}
 .libPaths("C:/R/library") # this line of code tells R where packages are saved on your pc: you might have to adjust this
-library('dplyr')
-library("ggplot2")
-library('zipfR')
+library('dplyr') ; library("ggplot2") ; library('zipfR')
 ```
 <br><br>
 
@@ -391,21 +389,9 @@ In addition to more traditional productivity measures, a series of measurements 
 <br>
 We load some R packages:
 
-```{r, include=FALSE}
+```{r, results = "hide"}
 .libPaths("C:/R/library")
-library('FactoMineR')
-library('factoextra')
-library("corrplot")
-library("PerformanceAnalytics")
-library("MASS")
-library("effects")
-library("vcd")
-library("car")
-library("performance")
-library("DHARMa")
-library("partykit")
-library("rpart")
-library("rpart.plot")
+library('FactoMineR', quietly = TRUE) ; library('factoextra', quietly = TRUE) ; library("corrplot", quietly = TRUE) ; library("PerformanceAnalytics", quietly = TRUE) ; library("MASS", quietly = TRUE) ; library("effects", quietly = TRUE) ; library("vcd", quietly = TRUE) ; library("car", quietly = TRUE) ; library("performance", quietly = TRUE) ; library("DHARMa", quietly = TRUE) ; library("partykit", quietly = TRUE) ; library("rpart", quietly = TRUE) ; library("rpart.plot", quietly = TRUE)
 ```
 
 
