@@ -517,7 +517,7 @@ plot(as.party(tree_model_1))
 Contrary to the previous tree, this new model only recognizes the variable avg_summit_10 to split the data. 
 
 ```{r}
-tree_model_2<-glmtree(hapax_freq ~ avg_summit_10 * diff_r1_r2, data = data_bis, epsilon =1, offset = token_freq_sample, alpha = 0.2, minsize = 1, family = "poisson")
+tree_model_2<-glmtree(hapax_freq ~ avg_summit_10 * diff_r1_r2, data = data_bis, epsilon =1, alpha = 0.2, minsize = 1, family = "poisson")
 plot(tree_model_2)
 ```
 
@@ -550,9 +550,9 @@ summary(nbGLM)
 Comparison with models:
 
 ```{r}
-nbGLM.null <- glm.nb(hapax_freq ~ 1 + offset(log(token_freq_sample)), data=data_bis)
-nbGLM.2 <- glm.nb(hapax_freq ~ avg_summit_10 + offset(log(token_freq_sample)), data=data_bis)
-nbGLM.4 <- glm.nb(hapax_freq ~ avg_summit_10 * diff_r1_r2 + offset(log(token_freq_sample)), data=data_bis)
+nbGLM.null <- glm.nb(hapax_freq ~ 1, data=data_bis)
+nbGLM.2 <- glm.nb(hapax_freq ~ avg_summit_10, data=data_bis)
+nbGLM.4 <- glm.nb(hapax_freq ~ avg_summit_10 * diff_r1_r2, data=data_bis)
 anova(nbGLM.null, nbGLM.2, nbGLM, nbGLM.4, test="Chisq")
 ```
 `<br>
