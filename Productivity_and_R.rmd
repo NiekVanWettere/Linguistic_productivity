@@ -201,7 +201,7 @@ empirical_vgc_with_V1<-plot(list_empirical_vgc_V1[[1]], list_empirical_vgc_V1[[4
 
 ## Hapax type ratio
 <br>
-The hapax type ratio is a different productivity measure, in addition to type frequency and hapax frequency. Just like we have established the evolution of the type frequency and the hapax frequency throughout the sample, we can do the same thing for the hapax type ratio, using the ggplot2 package.
+The hapax type ratio is a different productivity measure, in addition to type frequency and hapax frequency. Similar to how we established the evolution of the type frequency and the hapax frequency throughout the sample, we can now do the same thing for the hapax type ratio, using the ggplot2 package.
 
 
 ```{r}
@@ -274,7 +274,7 @@ dataframe_per_cat <-dataframe_per_cat[,c(-1:-2)]
 dataframe_per_cat<-filter(dataframe_per_cat, Freq!=0)
 colnames(dataframe_per_cat)<-c("token_freq","CONSTRUCTION_CAT")
 
-# freq freq per CAT 
+# type freq per CAT 
 second_selection<-select(data, CONSTRUCTION, CAT, TYPE)
 dataframe_per_cat_2<-as.data.frame(table(second_selection))
 dataframe_per_cat_2$CX_CAT <- paste(dataframe_per_cat_2$CONSTRUCTION, dataframe_per_cat_2$CAT, sep = "+") # add variable CONSTRUCTION_CAT
