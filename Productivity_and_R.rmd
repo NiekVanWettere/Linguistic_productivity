@@ -1,12 +1,13 @@
 ---
 title: 'Linguistic productivity analysis in R: a tutorial'
-
 author: "Niek Van Wettere (https://orcid.org/0000-0002-9455-368X)"
-output: 
-        html_notebook:
-          number_section: yes
-          toc: yes
-  
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+  html_notebook:
+    number_section: yes
+    toc: yes
 ---
 
 <br>
@@ -14,7 +15,7 @@ output:
 
 # Introduction
 <br>
-This tutorial provides an overview of different plotting techniques and statistical methods that can be used to perform a productivity analysis of linguistic constructions. First, it is shown how a dataset comprised of individual attestations (= rows) and variables (= columns) can give rise to different types of plots and ananlyses. In part 2, a dataset containing productivity measurements (= columns) per construction (= rows) is used as a starting point for further statistical analysis.
+This tutorial provides an overview of different plotting techniques and statistical methods that can be used to perform a productivity analysis of linguistic constructions. First, it is shown how a dataset comprised of individual attestations (= rows) and variables (= columns) can give rise to different types of plots and analyses. In part 2, a dataset containing productivity measurements (= columns) per construction (= rows) is used as a starting point for further statistical analysis.
 <br><br>
 
 # Analysis of dataset [individual attestations X variables]
